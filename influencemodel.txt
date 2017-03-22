@@ -1,0 +1,29 @@
+Cut GeoJSON file so only the first 5 tracks are on GitHub
+
+
+
+Discrete interaction model:
+
+(for each track point, there is only an interaction with at most one object)
+
+- road surface quality (on, discrete): get segment attribute for each point
+
+- green areas (visible decay, discrete): get green area for each point with probability
+
+- steepness (on, discrete, raster intersection): get steepness value for each point, standardized
+
+- noise pollution (which file?): get pollution value for each point, standardized
+
+
+
+
+
+Some ideas for modelling the influence factors:
+	- green areas:(natural layout attractiveness): 1 when inside, exponential decay when outside. discrete influence (as long as there is some green area in sight, there is a certain influence, but it does not become higher when there is more of them) 'nearness of some green area. You can take the geometric mean or the max of the probabilities. 
+				  (diversity): sum function over different types of environment
+	- steepness attractiveness:  Not distance based, but on the spot influence. there is a sweet spot of steepness, decreases on either sides. You turn steepness again into a 0-1 value. 
+	- noise pollution: turn decibel scale into attractiveness scale. it is already summed up. Min-max standardization: -1 to 0
+	- surface quality: (categorical) assign attractiveness values to different categories between -1 and +1.
+
+Summing up over track:
+	- generate weights for each track point based on distances (time, space) between points. generate half-distances, assign one or two half-distances to each track point (the latter aresummed), and then build the weighted average over a track.
