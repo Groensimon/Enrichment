@@ -9,28 +9,28 @@
 # Licence:     <your licence>
 #-------------------------------------------------------------------------------
 import os
-import arcpy
-arcpy.env.overwriteOutput = True
-from shapely.geometry import MultiPoint
+from shapely.geometry import MultiPoint, shape, LineString, mapping
+import fiona
 
 
 def buildNodeList(network):
     nodelist = {}
-    if arcpy.Exists(network):
-        cursor = arcpy.da.SearchCursor(network, ["van_id", "naar_id", "SHAPE@"])
+    with fiona.open(network, 'r') as source:
         number = 0
-        for row in cursor:
+        for f in source:
+            geom = shape(f['geometry'])
             #if number ==100:
-                #break
-            van = row[0]
-            naar = row[1]
-            geom = row[2]
-            fp = geom.firstPoint
-            lp = geom.lastPoint
+               # break
+            van = f['properties']['van_id']
+            naar =f['properties']['naar_id']
+
+            fp = geom.coords[0]
+            lp = geom.coords[len(geom.coords)-1]
             update(van,fp,nodelist)
             update(naar,lp,nodelist)
             number+=1
     #print nodelist
+    source.close()
 ##    print "966076: "+str(nodelist['966076'])
     return nodelist
 
@@ -45,77 +45,86 @@ def update(nid, point, nodelist):
 def generateCentroids(nodelist):
     nodelistnew = {}
     for k,v in nodelist.items():
-        mp = MultiPoint([(p.X, p.Y) for p in v])
+        mp = MultiPoint([p for p in v])
         #print mp
-        nodelistnew[k]=arcpy.Point(mp.centroid.x, mp.centroid.y)
+        nodelistnew[k]=mp.centroid.coords[0]
     #print "966076: "+str(nodelistnew['966076'])
     return nodelistnew
 
-
-
-
-
 def correctNetwork(nodelist, network):
-    outname = (os.path.splitext(os.path.basename(network))[0][:9])+'_corr'
-    try:
-        if arcpy.Exists(outname):
-            arcpy.Delete_management(outname)
-        arcpy.CopyFeatures_management(network, os.path.join(arcpy.env.workspace,outname)+'.shp')
-    except Exception:
-        e = sys.exc_info()[1]
-        print(e.args[0])
-    arcpy.Delete_management('segments_lyr')
-    arcpy.MakeFeatureLayer_management(os.path.join(arcpy.env.workspace,outname)+'.shp', 'segments_lyr')
-    cursor = arcpy.UpdateCursor('segments_lyr', ["van_id","naar_id","SHAPE@"])
+    outname = os.path.join(os.path.dirname(network),((os.path.splitext(os.path.basename(network))[0][:9])+'_corr'))
+    with fiona.open(network, 'r') as source:
+        source_driver = source.driver
+        source_crs = source.crs
+        source_schema = source.schema
 
-    for r in cursor:
-        geom = r.getValue("SHAPE")
-        p1 =  r.getValue("van_id")
-        p2 =  r.getValue("naar_id")
-        if p1 in nodelist:
-            first_point = nodelist[p1]
-        else:
-            first_point = None
-        if p2 in nodelist:
-           last_point = nodelist[p2]
-        else:
-            last_point = None
+        with fiona.open(
+               outname,
+               'w',
+               driver=source_driver,
+               crs=source_crs,
+               schema=source_schema) as c:
 
-        r.setValue("SHAPE",getNewLine(geom,first_point, last_point))
-        cursor.updateRow(r)
+            for rec in source:
+                geom = shape(rec['geometry'])
+                p1 =  rec['properties']["van_id"]
+                p2 =  rec['properties']["naar_id"]
+                if p1 in nodelist:
+                    first_point = nodelist[p1]
+                else:
+                    first_point = None
+                if p2 in nodelist:
+                   last_point = nodelist[p2]
+                else:
+                    last_point = None
+                line = getNewLine(geom,first_point, last_point)
+                rec['geometry'] = mapping(line)
+                #print rec
+##                if line.is_valid == False:
+##                    print "invalid: "+str(list(line.coords))
+##                    print "original: "+str(list(geom.coords))
+##                    break
+                c.write(rec)
 
-    del r,cursor
+
+    source.close()
+    c.close()
 
 
 
 def getNewLine(geom, first_point,last_point):
-    array = geom.getPart(0)
+    array = list(geom.coords)
+    #print array
     fp =[first_point]
     cf=1
     lp =[last_point]
-    cl = array.count-1
+    cl = len(array)-1
     if first_point ==None:
         fp =[]
         cf = 0
     if last_point == None:
         lp=[]
-        cl = array.count
+        cl = len(array)
 
     # Build a new array with your new point in the 0th position, and
     # the rest of the points from the old array.
-    alist = fp+[array.getObject(x) for x in range(cf,cl)]
+    alist = fp+[array[x] for x in range(cf,cl)]
     blist = alist+lp
-    new_array = arcpy.Array(blist)
+    new_array = blist
     # Then make a new Polyline object with that array.
-    new_line = arcpy.Polyline(new_array)
-    return new_line
+    #print new_array
+    geom.coords = blist
+    return geom
 
 def main():
-    arcpy.env.workspace="C:\Temp\Road_293162"
-    network = "Road_293162.shp"
-    #network = "RoadTest.shp"
+    workspace="C:/Temp/fietsersbond"
+    #network = "links.shp"
+
+    network = os.path.join(workspace,"links.shp")
     nodelist = buildNodeList(network)
+    #print nodelist
     nodelist = generateCentroids(nodelist)
+    #print nodelist
     correctNetwork(nodelist,network)
 
 
