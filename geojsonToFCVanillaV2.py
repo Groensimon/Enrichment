@@ -25,7 +25,10 @@ from math import exp, sqrt
 import json
 import sys
 arcpy.CheckOutExtension("spatial")
+from arcpy import env
 
+arcpy.env.overwriteOutput = True
+arcpy.env.workspace = "C:/thesisData"
 
 
 def getTrackPoints(trackarray, objects):
@@ -84,24 +87,12 @@ def getCandidates(point, objects, decayConstantEu, maxdist=100):
 
 
 
-def enrich(points, objects, decayConstantEu, maxDist):
+def enrich(points, objects, decayConstantEu, maxDist, natureInput, clipInput):
     #track is a list of point geometries
-
+    natDistances = distToPolygon(points[0], objects, natureInput, clipInput, maxDist)
+    print natDistances
     candidates = getCandidates(points[0],objects, decayConstantEu, maxDist)
     print candidates
-
-
-
-def getNatPB(natureIR, dist): #Check if dist can actually be used for this, as it is also used for the network distance in a previous definition
-    #natureIR = natureToInfluenceRaster(natureInput, clipInput)
-    dist= float(dist)
-    #Function that returns a p between 1 and 0 based on a continues decay between 1 and 100 meter
-    try:
-        p = 1 if dist == 0 else round((1.0-(dist/100.0)),4)
-    except dist >= 100:
-        p =  round(1/float('inf'),2)
-    return p
-
 
 
 
@@ -140,11 +131,11 @@ def LoadFromGeoJSON(inputData, objects):
 
     return tracks
 
-def iterateTracks(tracks, objects,decayConstantEu,maxDist):
+def iterateTracks(tracks, objects,decayConstantEu,maxDist,natureInput,clipInput):
     for track in tracks:
         ID = track[0]
         trackpoints = track[1]
-        enrich(trackpoints,objects,decayConstantEu,maxDist)
+        enrich(trackpoints, objects, decayConstantEu, maxDist, natureInput, clipInput)
 
 
 
@@ -175,25 +166,73 @@ def toSHP(tracks,workspace,fcname):
             print row
 
 
-def natureToInfluenceRaster(natureInput, clipInput):
+def getNatPB(dist, maxDist): #Check if dist can actually be used for this, as it is also used for the network distance in a previous definition
+    """
+    A definition that should return the influence probability on a track point based on the distance between the point and the nearest polygon
+    """
+    #natureIR = natureToInfluenceRaster(natureInput, clipInput)
+    dist = float(dist)
+    #Function that returns a p between 1 and 0 based on a continues decay between 1 and 100 meter
+    try:
+        p = 1 if dist == 0 else round((1-(dist/maxDist)),4)
+    except dist >= 100:
+        p =  round(1/float('inf'),2)
+    return p
+    print p
+
+
+def natureToFC(natureInput, clipInput):
     try:
         if arcpy.Exists("natureBrabant.shp"):
             arcpy.Delete_management("natureBrabant.shp")
-        #if arcpy.Exists("natureRaster"):
-            #arcpy.Delete_management("natureRaster")
+        if arcpy.Exists("bbg2010FL_lyr"):
+            arcpy.Delete_management("bbg2010FL_lyr")
+        if arcpy.Exists("bbgFeatureLayer"):
+            arcpy.Delete_management("bbgFeatureLayer")
     except arcpy.ExecuteError:
             arcpy.AddError(arcpy.GetMessages(2))
     except:
             e=sys.exc_info()[1]
             print (e.args[0])
-    nature = arcpy.SelectLayerByAttribute_management(natureInput, "NEW_SELECTION", "BG2010A = 40 OR BG2010A = 43 OR BG2010A = 60 OR BG2010A = 61 OR BG2010A = 62", "NON_INVERT")
-    natureBrabant = arcpy.Clip_analysis(nature, clipInput, "natureBrabant.shp", "")
-    return natureBrabant
-    #I found that converting the polygons to raster was no longer necessary for this enrichment
-    #natureRaster = arcpy.PolygonToRaster_conversion(natureBrabant, "BG2010A", "natureRaster", "CELL_CENTER", "", 1)
-    #natureInfluenceRaster = Reclassifty("natureRaster", "Value", RemapValue([[40, 1], [43, 1], [60, 1], [61, 1], [62, 1]]), "NO_DATA")
+    arcpy.Clip_analysis(natureInput, clipInput, "natureBrabant.shp", "")
+    nature = arcpy.MakeFeatureLayer_management("natureBrabant.shp", "bbg2010FL_lyr", "BG2010A = 40 OR BG2010A = 43 OR BG2010A = 60 OR BG2010A = 61 OR BG2010A = 62")
+    #arcpy.SelectLayerByAttribute_management("bbg2010FL_lyr", "NEW_SELECTION", "BG2010A = 40 OR BG2010A = 43 OR BG2010A = 60 OR BG2010A = 61 OR BG2010A = 62")
+    #arcpy.CopyFeatures_management("bbg2010FL_lyr", "bbgFeatureLayer")
+    return nature
 
 
+def distToPolygon(point, objects, natureInput, clipInput, maxDist):
+    """
+    A defenition that should return the distance between each point and the nearest polygon
+    """
+    """
+    polygon = natureToInfluenceRaster(natureInput, clipInput)
+    point = getTrackPoints(trackarray, objects)
+    nearestDist = arcpy.Near_analysis(points, polygon)
+    #nearestDist = points.distanceTo(polygon.geometry[0])
+    print nearestDist
+    return nearestDist
+    """
+    p = point.firstPoint #get the coordinates of the point geometry
+    #print "Neighbors of point "+str(p.X) +' '+ str(p.Y)+" : "
+    #Select all segments within max distance
+    #arcpy.Delete_management('')
+    #arcpy.MakeFeatureLayer_management(objects, 'objects_lyr')
+    arcpy.SelectLayerByLocation_management(natureToFC(natureInput, clipInput), "WITHIN_A_DISTANCE", point, 1000)
+    distances = {}
+    #Go through these, compute distances, probabilities and store them as candidates
+    cursor = arcpy.da.SearchCursor("bbg2010FL_lyr", ["FID", "SHAPE@"])
+    row =[]
+    for row in cursor:
+        #compute the spatial distance
+        dist = point.distanceTo(row[1])
+        #compute the corresponding probability
+        distances[row[0]] = getNatPB(dist, maxDist)
+    del row
+    del cursor
+    #print str(candidates)
+    print distances
+    return distances
 
 
 
@@ -202,6 +241,9 @@ workspace = "C:/Users/Simon/Documents/GitHub/mapmatcherTest"
 inputData = "C:/Users/Simon/Documents/GitHub/mapmatcherTest/tracksubset.geojson"
 fcname = "testRunnerTracks.shp"
 objects = "C:/thesisData/network/links_corr/links_corr.shp"
+natureInput ="C:/thesisData/bodemstatistiek/bbg2010.shp"
+clipInput = "C:/thesisData/researchArea/Noord_Brabant.shp"
 maxDist = 100
 tracks = LoadFromGeoJSON(inputData,objects)
-iterateTracks(tracks,objects,50,maxDist)
+#iterateTracks(tracks,objects,50,maxDist)
+iterateTracks(tracks,objects,50,maxDist,natureInput,clipInput)
