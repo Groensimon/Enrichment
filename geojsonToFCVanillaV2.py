@@ -173,10 +173,17 @@ def getNatPB(dist, maxDist): #Check if dist can actually be used for this, as it
     #natureIR = natureToInfluenceRaster(natureInput, clipInput)
     dist = float(dist)
     #Function that returns a p between 1 and 0 based on a continues decay between 1 and 100 meter
-    try:
-        p = 1 if dist == 0 else round((1-(dist/maxDist)),4)
-    except dist >= 100:
-        p =  round(1/float('inf'),2)
+    #try:
+        #p = 1 if dist == 0 else round((1-(dist/maxDist)),4)
+    #except dist >= 100:
+        #p = 0
+        #p =  round(1/float('inf'),2)
+    if dist == 0:
+        p = 1
+    elif dist <= 100:
+        p = round((1-(dist/maxDist)), 4)
+    elif dist > 100:
+        p = 0
     return p
     print p
 
