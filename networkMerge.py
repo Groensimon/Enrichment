@@ -211,7 +211,7 @@ def appendedNetwork(networkBike, networkFoot, outData):
 def main():
     workspace = "C:/thesisData"
     networkBike = "C:/thesisData/network/links_corr/links_corr.shp"
-    networkFoot = "C:/thesisData/Pedestrian_roads_rdnew.shp"
+    networkFoot = "C:/thesisData/fullOSMRoads/OSM_roads_rdnew.shp"
     outFeatures = "C:/thesisData/Pedestrian_roads_wM.shp"
     outdata = "C:/thesisData/combinedNetwork.shp"
     #network = os.path.join(workspace,"links.shp")

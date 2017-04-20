@@ -89,7 +89,7 @@ def getCandidates(point, objects, decayConstantEu, maxdist=100):
 
 def enrich(points, objects, decayConstantEu, maxDist, natureInput, clipInput):
     #track is a list of point geometries
-    natDistances = distToPolygon(points[0], objects, natureInput, clipInput, maxDist)
+    natDistances = distToPolygon(inputData, objects, natureInput, clipInput, maxDist)
     print natDistances
     candidates = getCandidates(points[0],objects, decayConstantEu, maxDist)
     print candidates
@@ -208,7 +208,7 @@ def natureToFC(natureInput, clipInput):
     return nature
 
 
-def distToPolygon(point, objects, natureInput, clipInput, maxDist):
+def distToPolygon(inputData, objects, natureInput, clipInput, maxDist):
     """
     A defenition that should return the distance between each point and the nearest polygon
     """
@@ -220,13 +220,14 @@ def distToPolygon(point, objects, natureInput, clipInput, maxDist):
     print nearestDist
     return nearestDist
     """
-    p = point.firstPoint #get the coordinates of the point geometry
+    p = LoadFromGeoJSON(inputData, objects)
+    #p = point.firstPoint #get the coordinates of the point geometry
     #print "Neighbors of point "+str(p.X) +' '+ str(p.Y)+" : "
     #Select all segments within max distance
     #arcpy.Delete_management('')
     #arcpy.MakeFeatureLayer_management(objects, 'objects_lyr')
-    arcpy.SelectLayerByLocation_management(natureToFC(natureInput, clipInput), "WITHIN_A_DISTANCE", point, 1000)
-    distances = {}
+    arcpy.SelectLayerByLocation_management(natureToFC(natureInput, clipInput), "WITHIN_A_DISTANCE", p, 100)
+    probabilities = {}
     #Go through these, compute distances, probabilities and store them as candidates
     cursor = arcpy.da.SearchCursor("bbg2010FL_lyr", ["FID", "SHAPE@"])
     row =[]
@@ -234,18 +235,18 @@ def distToPolygon(point, objects, natureInput, clipInput, maxDist):
         #compute the spatial distance
         dist = point.distanceTo(row[1])
         #compute the corresponding probability
-        distances[row[0]] = getNatPB(dist, maxDist)
+        probabilities[row[0]] = getNatPB(dist, maxDist)
     del row
     del cursor
-    #print str(candidates)
-    print distances
-    return distances
+    print str(probabilities)
+    #print distances
+    return probabilities
 
 
 
 #Setting the parameters for the GeoJSONToFC definition
-workspace = "C:/Users/Simon/Documents/GitHub/mapmatcherTest"
-inputData = "C:/Users/Simon/Documents/GitHub/mapmatcherTest/tracksubset.geojson"
+workspace = "C:/Users/Simon/Documents/GitHub/Enrichment"
+inputData = "C:/Users/Simon/Documents/GitHub/Enrichment/tracksubset.geojson"
 fcname = "testRunnerTracks.shp"
 objects = "C:/thesisData/network/links_corr/links_corr.shp"
 natureInput ="C:/thesisData/bodemstatistiek/bbg2010.shp"
