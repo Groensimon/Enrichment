@@ -30,7 +30,8 @@ def heightToSlope(heightInput1, heightInput2, heightInput3, heightInput4, worksp
 
 def getSlopeProbability(heightInput1, heightInput2, heightInput3, heightInput4, workspace, projectDataset):
     inputRaster = heightToSlope(heightInput1, heightInput2, heightInput3, heightInput4, workspace, projectDataset)
-    p = Reclassify(inputRaster, "VALUE", RemapRange([[0.0000, 10.0000, 0.6], [10.0000, 20.0000, 1.0], [20.0000, 30.0000, 0.4], [30.0000, 40.0000, 0.2], [40.0000, 88.5361, 0.0]]), "NODATA")
+    myRemapRange = RemapRange([[0.0000, 10.0000, 0.6], [10.0000, 20.0000, 1.0], [20.0000, 30.0000, 0.4], [30.0000, 40.0000, 0.2], [40.0000, 88.5361, 0.0]])
+    p = Reclassify(inputRaster, "VALUE", myRemapRange, "NODATA")
     return p
 
 
