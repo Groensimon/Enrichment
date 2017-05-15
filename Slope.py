@@ -46,6 +46,58 @@ def pointRasterValue(inputRaster, inputData, objects):
 
 
 
+def getTrackPoints(trackarray, objects):
+    """
+    Turns track shapefile into a list of point geometries, reprojecting to the planar RS of the network file
+    """
+    trackpoints = []
+    for coordinates in trackarray:
+        if type(coordinates).__name__ == 'list':
+            print coordinates
+            X = float(coordinates[0])
+            Y = float(coordinates[1])
+            point = arcpy.Point(X,Y)
+            pointGeometry = arcpy.PointGeometry(point, (arcpy.SpatialReference(4326))).projectAs(arcpy.Describe(objects).spatialReference) #RD_New
+            trackpoints.append(pointGeometry)
+    return trackpoints
+
+
+
+def LoadFromGeoJSON(inputData, objects):
+    #Loading the EHV0.json file into the script
+    with open(inputData) as json_data:
+        data = json.load(json_data)
+
+    #creating an empty list called 'tracks' and making data a global attribute
+    tracks = []
+    global data
+    js = {}
+
+    #Adding the _id and coordinates to the list 'tracks'
+    number = 0
+##    js["features"] = data["features"][0:5]
+##    with open('tracksubset.geojson', 'w') as outfile:
+##        json.dump(js, outfile)
+
+    for track in data["features"]:
+        ID = track["properties"]["runid"]
+        Distance = track["properties"]["distance"]
+        Duration = track["properties"]["duration"]
+        #for j in data[0]["trail"]:
+        coordinates = track["geometry"]["coordinates"]
+
+        #for coordinate in coordinates:
+        print coordinates
+        trackpoints = getTrackPoints(coordinates, objects)
+        tracks.append([ID,trackpoints])
+        number += 1
+        if number ==5:
+            break
+    #print tracks
+    return tracks
+
+
+
 def main():
     workspace = "C:/thesisData"
     heightInput1 = "C:/thesisData/AHN2/n51bz1.tif"

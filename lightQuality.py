@@ -14,16 +14,16 @@ import arcpy
 def streetLighting(objects):
     #Deleting all the fields that are generated in this definition to prevent errors.
     arcpy.DeleteField_management(objects, ["lightQual"])
-    #For the type of road surface.
+    #For the quality of the street lighting
     arcpy.AddField_management(objects, "lightQual", "FLOAT", 4, 4, "", "", "NULLABLE")
     #The block of python code that allows a text variable to be reclassed into a float variable!
-    expression1 = "Reclass(!verlichtin!, !lightQual)"
-    codeblock1 = """def Reclass(x, y)
-        if (x = ' ' or x = 'ONBEKEND' or x = 'niet verlicht'):
+    expression1 = "Reclass(!verlichtin!, !lightQual!)"
+    codeblock1 = """def Reclass(x, y):
+        if (x == ' ' or x == 'ONBEKEND' or x == 'niet verlicht'):
             y = 0.00
-        elif (x = 'beperkt verlicht (bijvoorbeeld alleen bij kruispunten)'):
+        elif (x == 'beperkt verlicht (bijvoorbeeld alleen bij kruispunten)'):
             y = 0.50
-        elif (x = 'goed verlicht'):
+        elif (x == 'goed verlicht'):
             y = 1.00
         return y"""
     arcpy.CalculateField_management(objects, "lightQual", expression1, "PYTHON_9.3", codeblock1)
@@ -31,7 +31,7 @@ def streetLighting(objects):
 
 
 
-objects = "C:/Users/3857611/Downloads/Enrichment-master/networkPr_corr.shp" #change!!
-#objects = "C:/Users/Simon/Documents/GitHub/Enrichment/networkPr_corr.shp"
+#objects = "C:/thesisData/network/links_corr/links_corr.shp"
+objects = "C:/Users/Simon/Documents/GitHub/Enrichment/networkPr_corr.shp"
 streetLighting(objects)
 

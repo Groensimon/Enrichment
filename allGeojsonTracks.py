@@ -6,15 +6,33 @@ arcpy.CheckOutExtension("spatial")
 
 
 
+def getTrackPoints(trackarray, objects):
+    """
+    Turns track shapefile into a list of point geometries, reprojecting to the planar RS of the network file
+    """
+    trackpoints = []
+    for coordinates in trackarray:
+        if type(coordinates).__name__ == 'list':
+            #print coordinates
+            X = float(coordinates[0])
+            Y = float(coordinates[1])
+            point = arcpy.Point(X,Y)
+            pointGeometry = arcpy.PointGeometry(point, (arcpy.SpatialReference(4326))).projectAs(arcpy.Describe(objects).spatialReference) #RD_New
+            trackpoints.append(pointGeometry)
+    return trackpoints
+
+
+
 #A definition that converts a (geo)json file to a feature class that can be used for mapmatching
 def LoadFromGeoJSON(inputData, objects):
+    global data
     #Loading the EHV0.json file into the script
     with open(inputData) as json_data:
         data = json.load(json_data)
 
     #creating an empty list called 'tracks' and making data a global attribute
     tracks = []
-    global data
+
     js = {}
 
     #Adding the _id and coordinates to the list 'tracks'
@@ -35,8 +53,8 @@ def LoadFromGeoJSON(inputData, objects):
         trackpoints = getTrackPoints(coordinates, objects)
         tracks.append([ID,trackpoints])
         number += 1
-        #if number ==5:
-            #break
+        if number == 30:
+            break
     #print tracks
 
     return tracks
@@ -61,8 +79,8 @@ def toSHP(tracks,workspace,fcname):
         for track in tracks:
             ID = track[0]
             for coordinates in track[1]:
-                X = float(coordinates[0])
-                Y = float(coordinates[1])
+                point.X = float(coordinates[0])
+                point.Y = float(coordinates[1])
                 point = arcpy.Point(X,Y)
                 pointGeometry = arcpy.PointGeometry(point, arcpy.SpatialReference(4326))
                 row = (ID,pointGeometry)
@@ -70,6 +88,11 @@ def toSHP(tracks,workspace,fcname):
             print row
 
 
-workspace = "C:/Users/Simon/Documents/GitHub/mapmatcherTest"
-fcname = "testRunnerTracks.shp"
 
+objects = "C:/thesisData/network/links_corr/links_corr.shp"
+inputData = "C:/thesisData/runnerTracks/EHV-clean.geojson"
+workspace = "C:/Users/Simon/Documents/GitHub/Enrichment/"
+fcname = "first30Tracks.shp"
+
+tracks = LoadFromGeoJSON(inputData, objects)
+toSHP(tracks,workspace,fcname)
