@@ -384,17 +384,6 @@ def getNatPB(dist, maxDist): #Check if dist can actually be used for this, as it
 
 
 """
-Air Pollution
-"""
-
-def airQualityIntersect(inputData, objects, workspace, fcname):
-    points = toSHP(inputData, objects, workspace, fcname)
-    airQualityRaster = "D:/Simon_Thesis/recalculatedRasters/airpol_tot"
-    ExtractValuesToPoints(points, airQualityRaster, "D:/Simon_Thesis/recalculatedRasters/airQualityTracks.shp", "INTERPOLATE", "VALUE_ONLY")
-
-
-
-"""
 Enrichment
 """
 
