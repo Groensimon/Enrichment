@@ -1,6 +1,6 @@
-
-
-
+import arcpy
+from arcpy import env
+arcpy.env.overwriteOutput = True
 
 
 
@@ -25,3 +25,8 @@ def networkPreProcessing(bikeNetwork, footNetwork):
     arcpy.Delete_management("C:/Users/Simon/Documents/GitHub/Enrichment/networkUpdate.shp", "C:/Users/Simon/Documents/GitHub/Enrichment/footNetworkUpdate.shp")
     return updatedNetwork
 
+
+
+bikeNetwork = "C:/thesisData/2NetworkAndSurfaceQuality/network.gdb/..."
+footNetwork = "C:/thesisData/2NetworkAndSurfaceQuality/network.gdb/WEGDEEL_HARTLIJN"
+networkPreProcessing(bikeNetwork, footNetwork)
